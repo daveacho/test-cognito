@@ -1,16 +1,3 @@
-# FROM public.ecr.aws/lambda/python:3.11
-
-# # Copy requirements and install Python dependencies
-# COPY cognito_backup_restore/requirements.txt ${LAMBDA_TASK_ROOT}
-
-# RUN pip install -r requirements.txt
-
-# # Copy Python function code
-# COPY cognito_backup_restore/*.py ${LAMBDA_TASK_ROOT}/
-
-# #Set the CMD to your handler
-# CMD ["cognito_backup_restore.lambda_handler"]
-
 # AWS Lambda base image
 FROM public.ecr.aws/lambda/python:3.12
 

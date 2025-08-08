@@ -30,15 +30,15 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          python3 -m venv test-venv
-          source test-venv/bin/activate
+          python3 -m venv venv
+          source venv/bin/activate
           pip install --upgrade pip
           pip install pylint
           pip install -r ${{ matrix.lambda }}/requirements.txt
 
       - name: Run Pylint
         run: |
-          source test-venv/bin/activate
+          source venv/bin/activate
           pylint ${{ matrix.lambda }}/*.py --fail-under=8.0
 
 
