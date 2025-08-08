@@ -322,7 +322,8 @@ class CognitoBackupRestore:
             'failed_users': failed_users
         }
 
-    def _restore_user_group_memberships(self, user_pool_id: str, username: str, user_groups: list) -> int:
+    def _restore_user_group_memberships(self, user_pool_id: str, 
+            username: str, user_groups: list) -> int:
         """
         Restore group memberships for a specific user.
         
@@ -347,7 +348,7 @@ class CognitoBackupRestore:
 
             except Exception as exc:
                 logger.warning("Failed to add user %s to group %s: %s", 
-                             username, group_name, exc)
+                    username, group_name, exc)
         return memberships_restored
 
 
@@ -408,3 +409,4 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
             'statusCode': 500,
             'body': json.dumps({'error': str(exc)})
         }
+    
