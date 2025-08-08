@@ -1,0 +1,53 @@
+name: PR Check for Lambda Functions
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint-and-validate:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        lambda: [cognito_backup_restore]               # Add more Lambdas here in the future, e.g., [cognito_backup, new_lambda_function]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache Python Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('${{ matrix.lambda }}/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
+        run: |
+          python3 -m venv test-venv
+          source test-venv/bin/activate
+          pip install --upgrade pip
+          pip install pylint
+          pip install -r ${{ matrix.lambda }}/requirements.txt
+
+      - name: Run Pylint
+        run: |
+          source test-venv/bin/activate
+          pylint ${{ matrix.lambda }}/*.py --fail-under=8.0
+
+
+      - name: Validate Docker Build
+        run: |
+          echo "Validating Docker build for ${{ matrix.lambda }}..."
+          docker build -t lambda-test:${{ matrix.lambda }}-${{ github.sha }} -f ${{ matrix.lambda }}/Dockerfile .
+          docker images | grep lambda-test | grep ${{ matrix.lambda }} || {
+            echo "❌ Docker build failed for ${{ matrix.lambda }}";
+            exit 1;
+          }
+          echo "✅ Docker build validated successfully for ${{ matrix.lambda }}"
