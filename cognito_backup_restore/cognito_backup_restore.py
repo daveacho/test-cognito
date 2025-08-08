@@ -103,7 +103,6 @@ class CognitoBackupRestore:
         """
         users = []
         paginator = self.cognito_client.get_paginator('list_users')
-        
         for page in paginator.paginate(UserPoolId=user_pool_id):
             for user in page['Users']:
                 # Enhance user object with group memberships
@@ -125,7 +124,6 @@ class CognitoBackupRestore:
                 # Add groups to user object
                 user['Groups'] = user_groups
                 users.append(user)
-        
         return users
 
     def _get_groups(self, user_pool_id: str) -> list:
@@ -324,8 +322,7 @@ class CognitoBackupRestore:
             'failed_users': failed_users
         }
 
-    def _restore_user_group_memberships(self, user_pool_id: str, username: str, 
-                                      user_groups: list) -> int:
+    def _restore_user_group_memberships(self, user_pool_id: str, username: str, user_groups: list) -> int:
         """
         Restore group memberships for a specific user.
         
@@ -351,7 +348,6 @@ class CognitoBackupRestore:
             except Exception as exc:
                 logger.warning("Failed to add user %s to group %s: %s", 
                              username, group_name, exc)
-
         return memberships_restored
 
 
