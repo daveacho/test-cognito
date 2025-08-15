@@ -33,13 +33,19 @@ jobs:
           python3 -m venv venv
           source venv/bin/activate
           pip install --upgrade pip
-          pip install pylint
+          pip install pylint pytest moto[server]
           pip install -r ${{ matrix.lambda }}/requirements.txt
 
       - name: Run Pylint
         run: |
           source venv/bin/activate
           pylint ${{ matrix.lambda }}/*.py --fail-under=8.0
+          
+
+      - name: Run Unit Tests
+        run: |
+          source venv/bin/activate
+          pytest ${{ matrix.lambda }}/tests --verbose
 
 
       - name: Validate Docker Build
@@ -51,3 +57,5 @@ jobs:
             exit 1;
           }
           echo "✅ Docker build validated successfully for ${{ matrix.lambda }}"
+
+      

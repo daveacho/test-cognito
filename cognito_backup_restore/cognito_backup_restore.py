@@ -9,10 +9,11 @@ group memberships embedded for easier restoration.
 import json
 import logging
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 import boto3
+from botocore.exceptions import ClientError
 
 # Configure logging
 logger = logging.getLogger()
@@ -22,27 +23,27 @@ logger.setLevel(logging.INFO)
 class CognitoBackupRestore:
     """
     Handles backup and restore operations for AWS Cognito User Pools.
-    
+
     This class provides methods to backup user pool data (users and groups)
     to S3 and restore from S3 backups. Client configurations are not included.
     """
 
     def __init__(self):
         """Initialize the CognitoBackupRestore with AWS clients."""
-        self.cognito_client = boto3.client('cognito-idp')
-        self.s3_client = boto3.client('s3')
+        self.cognito_client = boto3.client('cognito-idp', region_name='eu-west-2')
+        self.s3_client = boto3.client('s3', region_name='eu-west-2')
         self.bucket_name = os.environ.get('BACKUP_BUCKET_NAME')
 
     def backup_user_pool(self, user_pool_id: str) -> Dict[str, Any]:
         """
         Backup Cognito User Pool users and groups only (no clients).
-        
+
         Args:
             user_pool_id: The ID of the user pool to backup
-            
+
         Returns:
             Dict containing backup status and statistics
-            
+
         Raises:
             Exception: If backup operation fails
         """
@@ -60,7 +61,7 @@ class CognitoBackupRestore:
 
             # Create backup object (no clients)
             backup_data = {
-                'timestamp': datetime.now(UTC).isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'user_pool': user_pool['UserPool'],
                 'users': users,
                 'groups': groups
@@ -69,7 +70,7 @@ class CognitoBackupRestore:
             # Save to S3
             backup_key = (
                 f"cognito-backups/{user_pool_id}/"
-                f"{datetime.now(UTC).strftime('%Y-%m-%d_%H-%M-%S')}.json"
+                f"{datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S')}.json"
             )
 
             self.s3_client.put_object(
@@ -87,22 +88,23 @@ class CognitoBackupRestore:
                 'groups_backed_up': len(groups)
             }
 
-        except Exception as exc:
+        except ClientError as exc:
             logger.error("Backup failed for user pool %s: %s", user_pool_id, str(exc))
             raise
 
     def _get_users_with_groups(self, user_pool_id: str) -> list:
         """
         Get all users from the user pool with their group memberships embedded.
-        
+
         Args:
             user_pool_id: The ID of the user pool
-            
+
         Returns:
             List of user objects with embedded group memberships
         """
         users = []
         paginator = self.cognito_client.get_paginator('list_users')
+
         for page in paginator.paginate(UserPoolId=user_pool_id):
             for user in page['Users']:
                 # Enhance user object with group memberships
@@ -118,21 +120,22 @@ class CognitoBackupRestore:
                     ]
                     if user_groups:
                         logger.info("User %s belongs to groups: %s", username, user_groups)
-                except Exception as exc:
+                except ClientError as exc:
                     logger.warning("Could not retrieve groups for user %s: %s", username, exc)
 
                 # Add groups to user object
                 user['Groups'] = user_groups
                 users.append(user)
+
         return users
 
     def _get_groups(self, user_pool_id: str) -> list:
         """
         Get all groups from the user pool.
-        
+
         Args:
             user_pool_id: The ID of the user pool
-            
+
         Returns:
             List of group objects
         """
@@ -140,22 +143,22 @@ class CognitoBackupRestore:
         try:
             groups_response = self.cognito_client.list_groups(UserPoolId=user_pool_id)
             groups = groups_response['Groups']
-        except Exception as exc:
+        except ClientError as exc:
             logger.warning("Could not retrieve groups: %s", exc)
-        
+
         return groups
 
     def restore_user_pool(self, backup_key: str, target_user_pool_id: str = None) -> Dict[str, Any]:
         """
         Restore Cognito User Pool users and groups only (no clients).
-        
+
         Args:
             backup_key: S3 key of the backup file
-            target_user_pool_id: Optional target user pool ID for restoration
-            
+            target_user_pool_id: Target user pool ID for restoration (required)
+
         Returns:
             Dict containing restore status and statistics
-            
+
         Raises:
             Exception: If restore operation fails
         """
@@ -164,7 +167,7 @@ class CognitoBackupRestore:
             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=backup_key)
             backup_data = json.loads(response['Body'].read())
 
-            user_pool_id = self._get_or_create_user_pool(backup_data, target_user_pool_id)
+            user_pool_id = self._get_user_pool(target_user_pool_id)
 
             # Restore groups first (users need groups to exist before membership assignment)
             restored_groups = self._restore_groups(backup_data['groups'], user_pool_id)
@@ -183,46 +186,47 @@ class CognitoBackupRestore:
                 'backup_timestamp': backup_data['timestamp']
             }
 
-        except Exception as exc:
+        except (ClientError, ValueError) as exc:
             logger.error("Restore failed: %s", str(exc))
             raise
 
-    def _get_or_create_user_pool(self, backup_data: dict, target_user_pool_id: str = None) -> str:
+    def _get_user_pool(self, target_user_pool_id: str = None) -> str:
         """
-        Get existing user pool ID or create a new one.
-        
+        Get existing user pool ID for restoration.
+
         Args:
-            backup_data: The backup data containing user pool configuration
-            target_user_pool_id: Optional target user pool ID
-            
+            target_user_pool_id: Target user pool ID (required)
+
         Returns:
             User pool ID to use for restoration
+
+        Raises:
+            ValueError: If target_user_pool_id is not provided or pool doesn't exist
         """
-        if target_user_pool_id:
-            # Restore to existing user pool
-            logger.info("Restoring to existing user pool: %s", target_user_pool_id)
+        if not target_user_pool_id:
+            raise ValueError("target_user_pool_id is required for restoration")
+
+        # Verify the user pool exists
+        try:
+            self.cognito_client.describe_user_pool(UserPoolId=target_user_pool_id)
+            logger.info("Using existing user pool: %s", target_user_pool_id)
             return target_user_pool_id
-
-        # Create new user pool
-        user_pool_config = backup_data['user_pool'].copy()
-        # Remove read-only fields
-        read_only_fields = ['Id', 'Name', 'Status', 'CreationDate', 'LastModifiedDate', 'Arn']
-        for field in read_only_fields:
-            user_pool_config.pop(field, None)
-
-        create_response = self.cognito_client.create_user_pool(**user_pool_config)
-        user_pool_id = create_response['UserPool']['Id']
-        logger.info("Created new user pool: %s", user_pool_id)
-        return user_pool_id
+        except ClientError as exc:
+            error_code = exc.response['Error']['Code']
+            if error_code == 'ResourceNotFoundException':
+                logger.error("User pool %s does not exist", target_user_pool_id)
+                raise ValueError(f"User pool {target_user_pool_id} does not exist") from exc
+            logger.error("Failed to verify user pool %s: %s", target_user_pool_id, str(exc))
+            raise
 
     def _restore_groups(self, groups: list, user_pool_id: str) -> int:
         """
         Restore groups to the user pool.
-        
+
         Args:
             groups: List of group objects to restore
             user_pool_id: Target user pool ID
-            
+
         Returns:
             Number of groups restored
         """
@@ -242,7 +246,7 @@ class CognitoBackupRestore:
                 restored_groups += 1
                 logger.info("Restored group: %s", group['GroupName'])
 
-            except Exception as exc:
+            except ClientError as exc:
                 if 'GroupExistsException' in str(exc):
                     logger.info("Group %s already exists, skipping", group['GroupName'])
                     restored_groups += 1
@@ -254,11 +258,11 @@ class CognitoBackupRestore:
     def _restore_users(self, users: list, user_pool_id: str) -> Dict[str, Any]:
         """
         Restore users to the user pool with their group memberships.
-        
+
         Args:
             users: List of user objects to restore
             user_pool_id: Target user pool ID
-            
+
         Returns:
             Dict containing restoration statistics
         """
@@ -303,7 +307,7 @@ class CognitoBackupRestore:
                     user_pool_id, username, user_groups
                 )
 
-            except Exception as exc:
+            except ClientError as exc:
                 if 'UsernameExistsException' in str(exc):
                     logger.info("User %s already exists, skipping user creation", username)
                     restored_users += 1
@@ -322,16 +326,16 @@ class CognitoBackupRestore:
             'failed_users': failed_users
         }
 
-    def _restore_user_group_memberships(self, user_pool_id: str, 
-            username: str, user_groups: list) -> int:
+    def _restore_user_group_memberships(self, user_pool_id: str, username: str,
+                                        user_groups: list) -> int:
         """
         Restore group memberships for a specific user.
-        
+
         Args:
             user_pool_id: Target user pool ID
             username: Username to add to groups
             user_groups: List of group names the user should belong to
-            
+
         Returns:
             Number of group memberships restored
         """
@@ -346,26 +350,26 @@ class CognitoBackupRestore:
                 memberships_restored += 1
                 logger.info("Added user %s to group %s", username, group_name)
 
-            except Exception as exc:
-                logger.warning("Failed to add user %s to group %s: %s", 
-                    username, group_name, exc)
+            except ClientError as exc:
+                logger.warning("Failed to add user %s to group %s: %s",
+                               username, group_name, exc)
+
         return memberships_restored
 
 
-def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
+def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
     """
     Main Lambda handler for Cognito backup and restore operations.
-    
+
     Args:
         event: Lambda event containing operation details
-        context: Lambda context (unused)
-        
+        _context: Lambda context (unused, prefixed with underscore)
+
     Returns:
         Dict containing HTTP response with status and body
     """
     try:
         backup_restore = CognitoBackupRestore()
-
         operation = event.get('operation')
 
         if operation == 'backup':
@@ -373,7 +377,9 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
             if not user_pool_id:
                 return {
                     'statusCode': 400,
-                    'body': json.dumps({'error': 'user_pool_id is required for backup operation'})
+                    'body': json.dumps({
+                        'error': 'user_pool_id is required for backup operation'
+                    })
                 }
 
             result = backup_restore.backup_user_pool(user_pool_id)
@@ -389,7 +395,17 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
             if not backup_key:
                 return {
                     'statusCode': 400,
-                    'body': json.dumps({'error': 'backup_key is required for restore operation'})
+                    'body': json.dumps({
+                        'error': 'backup_key is required for restore operation'
+                    })
+                }
+
+            if not target_user_pool_id:
+                return {
+                    'statusCode': 400,
+                    'body': json.dumps({
+                        'error': 'target_user_pool_id is required for restore operation'
+                    })
                 }
 
             result = backup_restore.restore_user_pool(backup_key, target_user_pool_id)
@@ -400,13 +416,14 @@ def lambda_handler(event: Dict[str, Any], context) -> Dict[str, Any]:
 
         return {
             'statusCode': 400,
-            'body': json.dumps({'error': 'Invalid operation. Use "backup" or "restore"'})
+            'body': json.dumps({
+                'error': 'Invalid operation. Use "backup" or "restore"'
+            })
         }
 
-    except Exception as exc:
+    except (ClientError, ValueError) as exc:
         logger.error("Lambda execution failed: %s", str(exc))
         return {
             'statusCode': 500,
             'body': json.dumps({'error': str(exc)})
         }
-    
