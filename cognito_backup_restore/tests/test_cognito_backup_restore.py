@@ -1,7 +1,6 @@
 import pytest
 import json
 import boto3
-import os
 from moto import mock_aws
 from cognito_backup_restore.cognito_backup_restore import lambda_handler
 
@@ -22,7 +21,7 @@ def lambda_event():
 
 
 @pytest.fixture
-def s3_bucket(aws_region, monkeypatch):
+def s3_bucket(aws_region):
     """Fixture to create a mock S3 bucket."""
     with mock_aws():
         s3_client = boto3.client('s3', region_name=aws_region)
