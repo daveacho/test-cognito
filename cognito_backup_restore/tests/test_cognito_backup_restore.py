@@ -339,7 +339,7 @@ def test_lambda_handler_restore_nonexistent_backup(s3_bucket, monkeypatch, aws_r
     assert response['statusCode'] == 500
     assert 'error' in json.loads(response['body'])
 
-# import pytest
+## import pytest
 # import json
 # import boto3
 # from moto import mock_aws
