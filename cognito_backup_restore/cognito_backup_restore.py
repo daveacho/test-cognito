@@ -30,8 +30,9 @@ class CognitoBackupRestore:
 
     def __init__(self):
         """Initialize the CognitoBackupRestore with AWS clients."""
-        self.cognito_client = boto3.client('cognito-idp', region_name='eu-west-2')
-        self.s3_client = boto3.client('s3', region_name='eu-west-2')
+        region = os.environ.get('AWS_REGION', 'eu-west-2')
+        self.cognito_client = boto3.client('cognito-idp', region_name=region)
+        self.s3_client = boto3.client('s3', region_name=region)
         self.bucket_name = os.environ.get('BACKUP_BUCKET_NAME')
 
     def backup_user_pool(self, user_pool_id: str) -> Dict[str, Any]:
