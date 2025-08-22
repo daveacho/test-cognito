@@ -1,14 +1,15 @@
 """
-AWS Cognito User Pool backup and restore functionality.
+AWS Lambda function for Cognito User Pool backup and restore operations.
 
-This module provides a comprehensive solution for backing up and restoring
-AWS Cognito User Pools, including users, groups, and group memberships.
-It also handles DynamoDB updates for user sub mappings during restoration.
+This module provides functionality to backup and restore Amazon Cognito User Pools,
+including users and groups (but not clients). Users are backed up with their
+group memberships embedded for easier restoration.
 """
+
 import json
 import logging
 import os
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from typing import Dict, Any
 
 import boto3
@@ -23,32 +24,26 @@ class CognitoBackupRestore:
     """
     Handles backup and restore operations for AWS Cognito User Pools.
 
-
-    This class provides methods to back up user pool data (users and groups)
-    to S3 and restore from S3 backups.
+    This class provides methods to backup user pool data (users and groups)
+    to S3 and restore from S3 backups. Client configurations are not included.
     """
 
     def __init__(self):
         """Initialize the CognitoBackupRestore with AWS clients."""
-        region = os.environ.get('REGION', 'eu-west-2')
+        region = os.environ.get('AWS_REGION', 'eu-west-2')
         self.cognito_client = boto3.client('cognito-idp', region_name=region)
         self.s3_client = boto3.client('s3', region_name=region)
-        self.dynamodb_client = boto3.client('dynamodb', region_name=region)
         self.bucket_name = os.environ.get('BACKUP_BUCKET_NAME')
-        self.dynamodb_table = os.environ.get('DYNAMODB_TABLE_NAME')
 
     def backup_user_pool(self, user_pool_id: str) -> Dict[str, Any]:
         """
-        Backup Cognito User Pool users and groups only.
-
+        Backup Cognito User Pool users and groups only (no clients).
 
         Args:
-            user_pool_id: The ID of the user pool to back up
-
+            user_pool_id: The ID of the user pool to backup
 
         Returns:
             Dict containing backup status and statistics
-
 
         Raises:
             Exception: If backup operation fails
@@ -67,7 +62,7 @@ class CognitoBackupRestore:
 
             # Create backup object (no clients)
             backup_data = {
-                'timestamp': datetime.now(UTC).isoformat(),
+                'timestamp': datetime.now(timezone.utc).isoformat(),
                 'user_pool': user_pool['UserPool'],
                 'users': users,
                 'groups': groups
@@ -76,7 +71,7 @@ class CognitoBackupRestore:
             # Save to S3
             backup_key = (
                 f"cognito-backups/{user_pool_id}/"
-                f"{datetime.now(UTC).strftime('%Y-%m-%d_%H-%M-%S')}.json"
+                f"{datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S')}.json"
             )
 
             self.s3_client.put_object(
@@ -94,7 +89,6 @@ class CognitoBackupRestore:
                 'groups_backed_up': len(groups)
             }
 
-
         except ClientError as exc:
             logger.error("Backup failed for user pool %s: %s", user_pool_id, str(exc))
             raise
@@ -103,10 +97,8 @@ class CognitoBackupRestore:
         """
         Get all users from the user pool with their group memberships embedded.
 
-
         Args:
             user_pool_id: The ID of the user pool
-
 
         Returns:
             List of user objects with embedded group memberships
@@ -142,10 +134,8 @@ class CognitoBackupRestore:
         """
         Get all groups from the user pool.
 
-
         Args:
             user_pool_id: The ID of the user pool
-
 
         Returns:
             List of group objects
@@ -161,30 +151,30 @@ class CognitoBackupRestore:
 
     def restore_user_pool(self, backup_key: str, target_user_pool_id: str = None) -> Dict[str, Any]:
         """
-        Restore Cognito User Pool from a backup in S3.
-
+        Restore Cognito User Pool users and groups only (no clients).
 
         Args:
             backup_key: S3 key of the backup file
-            target_user_pool_id: The ID of the target user pool for restoration
-
+            target_user_pool_id: Target user pool ID for restoration (required)
 
         Returns:
-            Dict containing restoration status and statistics
+            Dict containing restore status and statistics
+
+        Raises:
+            Exception: If restore operation fails
         """
         try:
+            # Get backup data from S3
             response = self.s3_client.get_object(Bucket=self.bucket_name, Key=backup_key)
             backup_data = json.loads(response['Body'].read())
 
             user_pool_id = self._get_user_pool(target_user_pool_id)
-            restored_groups = self._restore_groups(backup_data['groups'], user_pool_id)
-            restore_stats = self._restore_users(backup_data['users'], user_pool_id)
 
-            dynamodb_stats = {'records_updated': 0, 'failed_updates': []}
-            if self.dynamodb_table:
-                dynamodb_stats = self._update_dynamodb_sub(restore_stats['sub_mappings'])
-            else:
-                logger.warning("DYNAMODB_TABLE_NAME not set, skipping DynamoDB updates")
+            # Restore groups first (users need groups to exist before membership assignment)
+            restored_groups = self._restore_groups(backup_data['groups'], user_pool_id)
+
+            # Restore users (with embedded group information)
+            restore_stats = self._restore_users(backup_data['users'], user_pool_id)
 
             logger.info("Restore completed for user pool %s", user_pool_id)
             return {
@@ -194,11 +184,8 @@ class CognitoBackupRestore:
                 'groups_restored': restored_groups,
                 'user_group_memberships_restored': restore_stats['memberships_restored'],
                 'failed_users': restore_stats['failed_users'],
-                'dynamodb_records_updated': dynamodb_stats['records_updated'],
-                'dynamodb_failed_updates': dynamodb_stats['failed_updates'],
                 'backup_timestamp': backup_data['timestamp']
             }
-
 
         except (ClientError, ValueError) as exc:
             logger.error("Restore failed: %s", str(exc))
@@ -208,14 +195,11 @@ class CognitoBackupRestore:
         """
         Get existing user pool ID for restoration.
 
-
         Args:
             target_user_pool_id: Target user pool ID (required)
 
-
         Returns:
             User pool ID to use for restoration
-
 
         Raises:
             ValueError: If target_user_pool_id is not provided or pool doesn't exist
@@ -223,6 +207,7 @@ class CognitoBackupRestore:
         if not target_user_pool_id:
             raise ValueError("target_user_pool_id is required for restoration")
 
+        # Verify the user pool exists
         try:
             self.cognito_client.describe_user_pool(UserPoolId=target_user_pool_id)
             logger.info("Using existing user pool: %s", target_user_pool_id)
@@ -239,11 +224,9 @@ class CognitoBackupRestore:
         """
         Restore groups to the user pool.
 
-
         Args:
             groups: List of group objects to restore
             user_pool_id: Target user pool ID
-
 
         Returns:
             Number of groups restored
@@ -264,7 +247,6 @@ class CognitoBackupRestore:
                 restored_groups += 1
                 logger.info("Restored group: %s", group['GroupName'])
 
-
             except ClientError as exc:
                 if 'GroupExistsException' in str(exc):
                     logger.info("Group %s already exists, skipping", group['GroupName'])
@@ -276,96 +258,65 @@ class CognitoBackupRestore:
 
     def _restore_users(self, users: list, user_pool_id: str) -> Dict[str, Any]:
         """
-        Restore users to the user pool with their group memberships and track sub mappings.
-
+        Restore users to the user pool with their group memberships.
 
         Args:
             users: List of user objects to restore
             user_pool_id: Target user pool ID
 
-
         Returns:
-            Dict containing restoration statistics and sub mappings
+            Dict containing restoration statistics
         """
         restored_users = 0
         restored_memberships = 0
         failed_users = []
-        sub_mappings = []
 
         for user in users:
             try:
                 username = user['Username']
                 user_groups = user.get('Groups', [])
-                old_sub = next(
-                    (attr['Value'] for attr in user.get('Attributes', [])
-                     if attr['Name'] == 'sub'), None
-                )
 
+                # Create user
                 user_attributes = [
                     {'Name': attr['Name'], 'Value': attr['Value']}
                     for attr in user.get('Attributes', [])
-                    if attr['Name'] not in ['sub']
+                    if attr['Name'] not in ['sub']  # Skip system attributes
                 ]
 
-                response = self.cognito_client.admin_create_user(
+                self.cognito_client.admin_create_user(
                     UserPoolId=user_pool_id,
                     Username=username,
                     UserAttributes=user_attributes,
-                    DesiredDeliveryMediums=['EMAIL']
+                    MessageAction='SUPPRESS',
+                    TemporaryPassword='TempPass123!'
                 )
 
-                new_sub = next(
-                    (attr['Value'] for attr in response['User']['Attributes']
-                     if attr['Name'] == 'sub'),
-                    None
-                )
-
-                if old_sub and new_sub:
-                    sub_mappings.append({
-                        'username': username,
-                        'old_sub': old_sub,
-                        'new_sub': new_sub
-                    })
-                    logger.info("Mapped old sub %s to new sub %s for user %s",
-                                old_sub, new_sub, username)
+                # Set permanent password if user was confirmed
+                if user.get('UserStatus') == 'CONFIRMED':
+                    self.cognito_client.admin_set_user_password(
+                        UserPoolId=user_pool_id,
+                        Username=username,
+                        Password='TempPass123!',
+                        Permanent=True
+                    )
 
                 restored_users += 1
                 logger.info("Restored user: %s", username)
+
+                # Restore user's group memberships
                 restored_memberships += self._restore_user_group_memberships(
                     user_pool_id, username, user_groups
                 )
-
 
             except ClientError as exc:
                 if 'UsernameExistsException' in str(exc):
                     logger.info("User %s already exists, skipping user creation", username)
                     restored_users += 1
 
-                    try:
-                        user_response = self.cognito_client.admin_get_user(
-                            UserPoolId=user_pool_id,
-                            Username=username
-                        )
-                        new_sub = next(
-                            (attr['Value'] for attr in user_response['UserAttributes']
-                             if attr['Name'] == 'sub'),
-                            None
-                        )
-                        if old_sub and new_sub:
-                            sub_mappings.append({
-                                'username': username,
-                                'old_sub': old_sub,
-                                'new_sub': new_sub
-                            })
-                            logger.info("Mapped old sub %s to new sub %s for existing user %s",
-                                        old_sub, new_sub, username)
-
-                        restored_memberships += self._restore_user_group_memberships(
-                            user_pool_id, username, user_groups
-                        )
-                    except ClientError as e:
-                        logger.warning("Failed to get user %s details: %s", username, e)
-                        failed_users.append(username)
+                    # Still try to restore group memberships for existing users
+                    restored_memberships += self._restore_user_group_memberships(
+                        user_pool_id, username, user_groups
+                    )
                 else:
                     logger.warning("Failed to restore user %s: %s", username, exc)
                     failed_users.append(username)
@@ -373,114 +324,7 @@ class CognitoBackupRestore:
         return {
             'users_restored': restored_users,
             'memberships_restored': restored_memberships,
-            'failed_users': failed_users,
-            'sub_mappings': sub_mappings
-        }
-
-    def _update_dynamodb_sub(self, sub_mappings: list) -> Dict[str, Any]:
-        """
-        Update DynamoDB table with new user sub values, skipping if old_sub equals new_sub.
-
-
-        Args:
-            sub_mappings: List of mappings containing old_sub, new_sub, and username
-
-
-        Returns:
-            Dict containing update statistics
-        """
-        updated_records = 0
-        failed_updates = []
-        skipped_updates = 0
-
-        for mapping in sub_mappings:
-            old_sub = mapping['old_sub']
-            new_sub = mapping['new_sub']
-            username = mapping['username']
-
-            # Skip update if old_sub equals new_sub
-            if old_sub == new_sub:
-                logger.info(
-                    "Skipping DynamoDB update for user %s: old_sub %s equals new_sub %s",
-                    username, old_sub, new_sub
-                )
-                skipped_updates += 1
-                continue
-
-            try:
-                # Query for items with PK as u#<old_sub>
-                response = self.dynamodb_client.query(
-                    TableName=self.dynamodb_table,
-                    KeyConditionExpression='PK = :old_sub',
-                    ExpressionAttributeValues={':old_sub': {'S': f'u#{old_sub}'}}
-                )
-
-                items = response.get('Items', [])
-                if not items:
-                    logger.info(
-                        "No DynamoDB records found for user %s with PK u#%s, skipping creation",
-                        username, old_sub
-                    )
-                    continue
-
-                for item in items:
-                    try:
-                        # Get the SK from the item (could be u#<sub> or another value)
-                        existing_sk = item['SK']['S']
-
-                        # Delete the old item
-                        self.dynamodb_client.delete_item(
-                            TableName=self.dynamodb_table,
-                            Key={
-                                'PK': {'S': f'u#{old_sub}'},
-                                'SK': {'S': existing_sk}
-                            }
-                        )
-
-                        # Create a new item with the new sub, preserving SK
-                        new_item = {
-                            'PK': {'S': f'u#{new_sub}'},
-                            'SK': {'S': existing_sk}
-                        }
-                        # Preserve other attributes if they exist
-                        for attr in ['asID', 'dT', 'grpID', 'owID']:
-                            if attr in item and item[attr].get('S'):
-                                new_item[attr] = {'S': item[attr]['S']}
-
-                        self.dynamodb_client.put_item(
-                            TableName=self.dynamodb_table,
-                            Item=new_item
-                        )
-                        updated_records += 1
-                        logger.info(
-                            "Updated DynamoDB record for user %s: PK u#%s -> u#%s, SK %s",
-                            username, old_sub, new_sub, existing_sk
-                        )
-                    except ClientError as exc:
-                        logger.warning(
-                            "Failed to update DynamoDB record for user %s "
-                            "(PK u#%s -> u#%s, SK %s): %s",
-                            username, old_sub, new_sub, existing_sk, exc
-                        )
-                        failed_updates.append({
-                            'username': username,
-                            'old_sub': old_sub,
-                            'sk': existing_sk,
-                            'error': str(exc)
-                        })
-            except ClientError as exc:
-                logger.warning("Failed to query DynamoDB for user %s (PK u#%s): %s",
-                               username, old_sub, exc)
-                failed_updates.append({
-                    'username': username,
-                    'old_sub': old_sub,
-                    'error': str(exc)
-                })
-
-        return {
-            'records_updated': updated_records,
-            'failed_updates': failed_updates,
-            'skipped_updates': skipped_updates
+            'failed_users': failed_users
         }
 
     def _restore_user_group_memberships(self, user_pool_id: str, username: str,
@@ -488,12 +332,10 @@ class CognitoBackupRestore:
         """
         Restore group memberships for a specific user.
 
-
         Args:
             user_pool_id: Target user pool ID
             username: Username to add to groups
             user_groups: List of group names the user should belong to
-
 
         Returns:
             Number of group memberships restored
@@ -509,22 +351,20 @@ class CognitoBackupRestore:
                 memberships_restored += 1
                 logger.info("Added user %s to group %s", username, group_name)
 
-
             except ClientError as exc:
                 logger.warning("Failed to add user %s to group %s: %s",
                                username, group_name, exc)
 
         return memberships_restored
 
+
 def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
     """
     Main Lambda handler for Cognito backup and restore operations.
 
-
     Args:
         event: Lambda event containing operation details
         _context: Lambda context (unused, prefixed with underscore)
-
 
     Returns:
         Dict containing HTTP response with status and body
