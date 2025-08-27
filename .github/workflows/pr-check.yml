@@ -109,6 +109,8 @@ jobs:
           pylint ${{ matrix.lambda }}/tests/*.py --fail-under=4.0 --disable=missing-function-docstring,missing-class-docstring
 
       - name: Run Unit Tests
+        env:
+          PYTHONPATH: ${{ matrix.lambda }}/lambda_code
         run: |
           source venv/bin/activate
           pytest ${{ matrix.lambda }}/tests --verbose
