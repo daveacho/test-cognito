@@ -926,14 +926,27 @@ def test_lambda_handler_restore_nonexistent_target_pool(s3_bucket, monkeypatch, 
     assert response['statusCode'] == 500
     assert 'error' in json.loads(response['body'])
 
+# @mock_aws
+# def test_lambda_handler_invalid_operation(monkeypatch):
+#     """Test the handler with an invalid operation."""
+#     monkeypatch.setenv('BACKUP_BUCKET_NAME', 'dummy-bucket')  # Set dummy bucket name
+#     event = {'operation': 'invalid'}
+#     response = lambda_handler(event, None)
+
+#     assert response['statusCode'] == 400
+#     assert json.loads(response['body'])['error'] == 'Invalid operation. Use "backup" or "restore"'
+
 @mock_aws
-def test_lambda_handler_invalid_operation():
+def test_lambda_handler_invalid_operation(s3_bucket, monkeypatch):
     """Test the handler with an invalid operation."""
+    monkeypatch.setenv('BACKUP_BUCKET_NAME', s3_bucket)
+   
     event = {'operation': 'invalid'}
     response = lambda_handler(event, None)
 
     assert response['statusCode'] == 400
     assert json.loads(response['body'])['error'] == 'Invalid operation. Use "backup" or "restore"'
+
 
 @mock_aws
 def test_lambda_handler_missing_user_pool_id(s3_bucket, monkeypatch, aws_region):
