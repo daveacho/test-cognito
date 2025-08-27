@@ -2,7 +2,8 @@ import pytest
 import json
 import boto3
 from moto import mock_aws
-from cognito_backup_restore.cognito_backup_restore import lambda_handler
+from cognito_backup_restore.lambda_code.lambda_handler import lambda_handler
+#from cognito_backup_restore.cognito_backup_restore import lambda_handler
 
 
 @pytest.fixture
