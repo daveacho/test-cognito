@@ -1,4 +1,5 @@
 """Lambda handler module for Cognito backup and restore operations."""
+
 import json
 from typing import Dict, Any
 from botocore.exceptions import ClientError

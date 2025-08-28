@@ -1,4 +1,5 @@
 """Configuration module for Cognito backup/restore system."""
+
 import os
 import logging
 from typing import Optional

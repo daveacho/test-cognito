@@ -1,4 +1,5 @@
 """AWS client initialization module for Cognito backup/restore operations."""
+
 import boto3
 from .config import Config
 

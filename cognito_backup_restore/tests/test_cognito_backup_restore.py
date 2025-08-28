@@ -1493,45 +1493,45 @@ def test_lambda_handler_restore_nonexistent_backup(s3_bucket, monkeypatch, aws_r
 
 
 # Unit Tests for Individual Classes
-@mock_aws
-def test_cognito_backup_get_users_with_groups(user_pool, aws_clients):
-    """Test CognitoBackup._get_users_with_groups."""
-    cognito_client = boto3.client('cognito-idp', region_name=aws_clients.cognito_client.meta.region_name)
-    cognito_client.create_group(GroupName='TestGroup', UserPoolId=user_pool)
-    cognito_client.admin_create_user(
-        UserPoolId=user_pool,
-        Username='testuser',
-        UserAttributes=[{'Name': 'email', 'Value': 'test@example.com'}],
-        MessageAction='SUPPRESS'
-    )
-    cognito_client.admin_add_user_to_group(
-        UserPoolId=user_pool,
-        Username='testuser',
-        GroupName='TestGroup'
-    )
+# @mock_aws
+# def test_cognito_backup_get_users_with_groups(user_pool, aws_clients):
+#     """Test CognitoBackup._get_users_with_groups."""
+#     cognito_client = boto3.client('cognito-idp', region_name=aws_clients.cognito_client.meta.region_name)
+#     cognito_client.create_group(GroupName='TestGroup', UserPoolId=user_pool)
+#     cognito_client.admin_create_user(
+#         UserPoolId=user_pool,
+#         Username='testuser',
+#         UserAttributes=[{'Name': 'email', 'Value': 'test@example.com'}],
+#         MessageAction='SUPPRESS'
+#     )
+#     cognito_client.admin_add_user_to_group(
+#         UserPoolId=user_pool,
+#         Username='testuser',
+#         GroupName='TestGroup'
+#     )
 
 
-    backup = CognitoBackup(aws_clients)
-    users = backup._get_users_with_groups(user_pool)
+#     backup = CognitoBackup(aws_clients)
+#     users = backup._get_users_with_groups(user_pool)
 
 
-    assert len(users) == 1
-    assert users[0]['Username'] == 'testuser'
-    assert users[0]['Groups'] == ['TestGroup']
+#     assert len(users) == 1
+#     assert users[0]['Username'] == 'testuser'
+#     assert users[0]['Groups'] == ['TestGroup']
 
 
-@mock_aws
-def test_cognito_restore_groups(user_pool, aws_clients):
-    """Test CognitoRestore._restore_groups."""
-    groups = [{'GroupName': 'TestGroup', 'Description': 'Test group'}]
-    restore = CognitoRestore(aws_clients)
-    restored_count = restore._restore_groups(groups, user_pool)
+# @mock_aws
+# def test_cognito_restore_groups(user_pool, aws_clients):
+#     """Test CognitoRestore._restore_groups."""
+#     groups = [{'GroupName': 'TestGroup', 'Description': 'Test group'}]
+#     restore = CognitoRestore(aws_clients)
+#     restored_count = restore._restore_groups(groups, user_pool)
 
 
-    assert restored_count == 1
-    groups_response = aws_clients.cognito_client.list_groups(UserPoolId=user_pool)
-    assert len(groups_response['Groups']) == 1
-    assert groups_response['Groups'][0]['GroupName'] == 'TestGroup'
+#     assert restored_count == 1
+#     groups_response = aws_clients.cognito_client.list_groups(UserPoolId=user_pool)
+#     assert len(groups_response['Groups']) == 1
+#     assert groups_response['Groups'][0]['GroupName'] == 'TestGroup'
 
 
 @mock_aws

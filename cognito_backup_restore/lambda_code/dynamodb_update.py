@@ -1,4 +1,5 @@
 """DynamoDB update module for Cognito user sub mappings."""
+
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
 from .aws_clients import AWSClients
