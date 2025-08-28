@@ -1,3 +1,4 @@
+"""Backup module for AWS Cognito User Pool operations."""
 import json
 from datetime import datetime, UTC
 from typing import Dict, Any, List
