@@ -1095,17 +1095,18 @@
 #     assert 'Item' in response
 #     assert response['Item']['data']['S'] == 'test-data'
 
+###################################################################
 import pytest
 import json
 import boto3
 from moto import mock_aws
-from lambda_code.lambda_handler import lambda_handler
-from lambda_code.config import Config
-from lambda_code.aws_clients import AWSClients
-from lambda_code.backup import CognitoBackup
-from lambda_code.restore import CognitoRestore
-from lambda_code.dynamodb_update import DynamoDBUpdate
-from datetime import datetime, UTC
+from cognito_backup_restore.lambda_code.lambda_handler import lambda_handler
+from cognito_backup_restore.lambda_code.config import Config
+from cognito_backup_restore.lambda_code.aws_clients import AWSClients
+from cognito_backup_restore.lambda_code.backup import CognitoBackup
+from cognito_backup_restore.lambda_code.restore import CognitoRestore
+from cognito_backup_restore.lambda_code.dynamodb_update import DynamoDBUpdate
+
 
 
 @pytest.fixture
