@@ -2,7 +2,8 @@
 import json
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
-from aws_clients import AWSClients, logger
+from aws_clients import AWSClients
+from config import logger
 from dynamodb_update import DynamoDBUpdate
 
 class CognitoRestore:

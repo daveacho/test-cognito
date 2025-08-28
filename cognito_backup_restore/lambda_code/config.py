@@ -9,7 +9,7 @@ logger.setLevel(logging.INFO)
 
 class Config:
     """Handles configuration and environment variables for the Cognito backup/restore system."""
-    
+
     def __init__(self):
         self.region: str = os.environ.get('REGION', 'eu-west-2')
         self.backup_bucket_name: Optional[str] = os.environ.get('BACKUP_BUCKET_NAME')
