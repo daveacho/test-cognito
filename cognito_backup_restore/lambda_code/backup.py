@@ -3,8 +3,8 @@ import json
 from datetime import datetime, UTC
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
-from aws_clients import AWSClients
-from config import logger
+from .aws_clients import AWSClients
+from .config import logger
 
 class CognitoBackup:
     """Handles backup operations for AWS Cognito User Pools."""

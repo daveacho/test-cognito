@@ -2,10 +2,10 @@
 import json
 from typing import Dict, Any
 from botocore.exceptions import ClientError
-from config import Config, logger
-from aws_clients import AWSClients
-from backup import CognitoBackup
-from restore import CognitoRestore
+from .config import Config, logger
+from .aws_clients import AWSClients
+from .backup import CognitoBackup
+from .restore import CognitoRestore
 
 def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
     """

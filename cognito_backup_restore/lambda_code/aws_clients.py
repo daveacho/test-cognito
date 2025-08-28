@@ -1,6 +1,6 @@
 """AWS client initialization module for Cognito backup/restore operations."""
 import boto3
-from config import Config
+from .config import Config
 
 class AWSClients:
     """Manages AWS client initialization for Cognito, S3, and DynamoDB."""

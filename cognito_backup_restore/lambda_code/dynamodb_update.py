@@ -1,8 +1,8 @@
 """DynamoDB update module for Cognito user sub mappings."""
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
-from aws_clients import AWSClients
-from config import logger
+from .aws_clients import AWSClients
+from .config import logger
 
 class DynamoDBUpdate:
     """Handles DynamoDB update operations for Cognito user sub mappings."""

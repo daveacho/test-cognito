@@ -2,9 +2,9 @@
 import json
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
-from aws_clients import AWSClients
-from config import logger
-from dynamodb_update import DynamoDBUpdate
+from .aws_clients import AWSClients
+from .config import logger
+from .dynamodb_update import DynamoDBUpdate
 
 class CognitoRestore:
     """Handles restore operations for AWS Cognito User Pools."""
