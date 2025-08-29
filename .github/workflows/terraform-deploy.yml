@@ -84,7 +84,7 @@ jobs:
       id: tfAppDest
       run: |
         if [ "${{ github.event.inputs.actions || 'apply' }}" == 'apply' ]; then
-            terraform apply tfplan --auto-approve
+            terraform apply --auto-approve tfplan
         else
             terraform destroy --auto-approve
         fi
