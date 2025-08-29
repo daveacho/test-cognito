@@ -1,10 +1,6 @@
 name: 'Push on Dev environment'
 
 on:
-  # push:
-  #   branches:
-  #     - main
-
   workflow_dispatch:
     inputs:
       actions:
