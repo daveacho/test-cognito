@@ -40,7 +40,34 @@ repository-root/
 │   ├── tests/
 │   │   ├── __init__.py
 │   │   ├── test_lambda_function.py
-├── main.tf  # Terraform script
+├── terraform/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── modules/
+│   │   ├── lambda/
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   ├── outputs.tf
+│   │   ├── ecr/
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   ├── outputs.tf
+│   │   ├── s3/
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   ├── outputs.tf
+│   │   ├── dynamodb/
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   ├── outputs.tf
+│   │   ├── iam/
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   ├── outputs.tf
 ├── .github/
 │   ├── workflows/
-│   │   ├── push-to-ecr.yml
+│   │   ├── pr-check.yml
+│   │   ├── pr-check-terraform.yml
+│   │   ├── deploy-lambda.yml
+│   │   ├── deploy-terraform.yml
