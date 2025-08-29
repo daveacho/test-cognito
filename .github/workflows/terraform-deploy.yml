@@ -1,21 +1,24 @@
 name: 'Push on Dev environment'
 
 on:
-  # push:
-  #   branches:
-  #     - main
-
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       actions:
-        description: 'terraform aaction (apply or destroy)'
+        description: 'terraform action (apply or destroy)'
         required: true
         default: apply
         type: choice
         options:
           - apply
           - destroy
-
+  workflow_run:
+    workflows: ['Deploy Lambda Functions'] # Name of the deploy.yml workflow
+    branches: [main]
+    types:
+      - completed
 env:
   TF_LOG: INFO
   TF_INPUT: false
@@ -28,7 +31,6 @@ jobs:
   terraform:
     name: 'Terraform deploy'
     runs-on: ubuntu-latest
-    needs: deploy.yml
 
     # Use the Bash shell
     defaults:
@@ -68,7 +70,7 @@ jobs:
     - name: Terraform plan
       id: plan
       run: |
-        if [ "${{ github.event.inputs.actions || apply }}" == "destroy" ]; then
+        if [ "${{ github.event.inputs.actions || 'apply' }}" == "destroy" ]; then
             terraform plan -destroy -out=tfplan -no-color > plan-output.txt
         else
             terraform plan -out=tfplan -no-color > plan-output.txt
@@ -78,10 +80,10 @@ jobs:
     #terraform apply or destroy
     - name: Terraform Apply or Destroy
     #  if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-      if: github.event_name == 'workflow_dispatch && github.ref == 'refs/heads/main'
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
       id: tfAppDest
       run: |
-        if [ "${{ github.event.inputs.actions || apply }} == 'apply" ]; then
+        if [ "${{ github.event.inputs.actions || 'apply' }} == 'apply' ]; then
             terraform apply tfplan --auto-approve
         else
             terraform destroy --auto-approve
