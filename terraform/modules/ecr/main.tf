@@ -1,4 +1,4 @@
-# ECR Repository
+## ECR Repository
 resource "aws_ecr_repository" "lambda_repo" {
 #   name                 = "${var.projectName}-${var.environment}-cognito-backup-restore"
   name                 = var.repository_name

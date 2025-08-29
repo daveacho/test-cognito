@@ -5,6 +5,10 @@ on:
     branches:
       - main
 
+    paths:
+      - 'terraform/**'
+      - 'main.tf'
+
 
 env:
   TF_LOG: INFO
