@@ -4,14 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       actions:
-        description: 'terraform aaction (apply or destroy)'
+        description: 'terraform action (apply or destroy)'
         required: true
         default: apply
         type: choice
         options:
           - apply
           - destroy
-
+  workflow_run:
+    workflows: ['Deploy Lambda Functions'] # Name of the deploy.yml workflow
+    branches: [main]
+    types:
+      - completed
 env:
   TF_LOG: INFO
   TF_INPUT: false
