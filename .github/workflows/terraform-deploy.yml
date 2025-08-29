@@ -68,7 +68,7 @@ jobs:
     - name: Terraform plan
       id: plan
       run: |
-        if [ "${{ github.event.inputs.actions || apply }}" == "destroy" ]; then
+        if [ "${{ github.event.inputs.actions || 'apply' }}" == "destroy" ]; then
             terraform plan -destroy -out=tfplan -no-color > plan-output.txt
         else
             terraform plan -out=tfplan -no-color > plan-output.txt
