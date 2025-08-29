@@ -28,7 +28,7 @@ module "s3" {
 # data "aws_ecr_repository" "test_name" {
 #   name = "backups"
 # }
-#
+##
 data "aws_ecr_image" "lambda_image" {
   repository_name = "backups"
   image_tag       = "cognito_backup_restore-latest"
