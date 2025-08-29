@@ -1,10 +1,13 @@
+"""DynamoDB update module for Cognito user sub mappings."""
+
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
-from aws_clients import AWSClients, logger
+from .aws_clients import AWSClients
+from .config import logger
 
 class DynamoDBUpdate:
     """Handles DynamoDB update operations for Cognito user sub mappings."""
-    
+
     def __init__(self, aws_clients: AWSClients):
         self.aws_clients = aws_clients
 
@@ -28,7 +31,10 @@ class DynamoDBUpdate:
             username = mapping['username']
 
             if old_sub == new_sub:
-                logger.info("Skipping DynamoDB update for user %s: old_sub %s equals new_sub %s", username, old_sub, new_sub)
+                logger.info(
+                    "Skipping DynamoDB update for user %s: old_sub %s equals new_sub %s",
+                    username, old_sub, new_sub
+                )
                 skipped_updates += 1
                 continue
 
@@ -41,14 +47,17 @@ class DynamoDBUpdate:
 
                 items = response.get('Items', [])
                 if not items:
-                    logger.info("No DynamoDB records found for user %s with PK u#%s, skipping creation", username, old_sub)
+                    logger.info(
+                        "No DynamoDB records found for user %s with PK u#%s, skipping creation",
+                        username, old_sub
+                    )
                     continue
 
                 for item in items:
                     try:
                         old_pk = item['PK']['S']
                         old_sk = item['SK']['S']
-                        
+
                         new_item = {k: v for k, v in item.items()}
                         new_item['PK'] = {'S': f'u#{new_sub}'}
 
@@ -75,11 +84,16 @@ class DynamoDBUpdate:
                             ]
                         )
                         updated_records += 1
-                        logger.info("Updated DynamoDB record for user %s: PK u#%s -> u#%s, SK %s -> %s",
-                                    username, old_sub, new_sub, old_sk, new_item['SK']['S'])
+                        logger.info(
+                            "Updated DynamoDB record for user %s: PK u#%s -> u#%s, SK %s -> %s",
+                            username, old_sub, new_sub, old_sk, new_item['SK']['S']
+                        )
                     except ClientError as exc:
-                        logger.warning("Failed to update DynamoDB record for user %s (PK u#%s -> u#%s, SK %s): %s",
-                                      username, old_sub, new_sub, old_sk, exc)
+                        logger.warning(
+                            "Failed to update DynamoDB record for user %s "
+                            "(PK u#%s -> u#%s, SK %s): %s",
+                            username, old_sub, new_sub, old_sk, exc
+                        )
                         failed_updates.append({
                             'username': username,
                             'old_sub': old_sub,
@@ -87,7 +101,10 @@ class DynamoDBUpdate:
                             'error': str(exc)
                         })
             except ClientError as exc:
-                logger.warning("Failed to query DynamoDB for user %s (PK u#%s): %s", username, old_sub, exc)
+                logger.warning(
+                    "Failed to query DynamoDB for user %s (PK u#%s): %s",
+                    username, old_sub, exc
+                )
                 failed_updates.append({
                     'username': username,
                     'old_sub': old_sub,

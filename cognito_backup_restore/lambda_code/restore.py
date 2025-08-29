@@ -1,12 +1,15 @@
+"""Restore module for AWS Cognito User Pool operations."""
+
 import json
 from typing import Dict, Any, List
 from botocore.exceptions import ClientError
-from aws_clients import AWSClients, logger
-from dynamodb_update import DynamoDBUpdate
+from .aws_clients import AWSClients
+from .config import logger
+from .dynamodb_update import DynamoDBUpdate
 
 class CognitoRestore:
     """Handles restore operations for AWS Cognito User Pools."""
-    
+
     def __init__(self, aws_clients: AWSClients):
         self.aws_clients = aws_clients
         self.dynamodb_update = DynamoDBUpdate(aws_clients)
@@ -33,9 +36,13 @@ class CognitoRestore:
             restored_groups = self._restore_groups(backup_data['groups'], user_pool_id)
             restore_stats = self._restore_users(backup_data['users'], user_pool_id)
 
-            dynamodb_stats = {'records_updated': 0, 'failed_updates': [], 'skipped_updates': 0}
+            dynamodb_stats = {
+                'records_updated': 0, 'failed_updates': [], 'skipped_updates': 0
+            }
             if self.aws_clients.dynamodb_table:
-                dynamodb_stats = self.dynamodb_update.update_dynamodb_sub(restore_stats['sub_mappings'])
+                dynamodb_stats = self.dynamodb_update.update_dynamodb_sub(
+                    restore_stats['sub_mappings']
+                )
             else:
                 logger.warning("DYNAMODB_TABLE_NAME not set, skipping DynamoDB updates")
 
@@ -73,14 +80,18 @@ class CognitoRestore:
             raise ValueError("target_user_pool_id is required for restoration")
 
         try:
-            self.aws_clients.cognito_client.describe_user_pool(UserPoolId=target_user_pool_id)
+            self.aws_clients.cognito_client.describe_user_pool(
+                UserPoolId=target_user_pool_id
+            )
             logger.info("Using existing user pool: %s", target_user_pool_id)
             return target_user_pool_id
         except ClientError as exc:
             error_code = exc.response['Error']['Code']
             if error_code == 'ResourceNotFoundException':
                 logger.error("User pool %s does not exist", target_user_pool_id)
-                raise ValueError(f"User pool {target_user_pool_id} does not exist") from exc
+                raise ValueError(
+                    f"User pool {target_user_pool_id} does not exist"
+                ) from exc
             logger.error("Failed to verify user pool %s: %s", target_user_pool_id, str(exc))
             raise
 
@@ -140,7 +151,10 @@ class CognitoRestore:
             try:
                 username = user['Username']
                 user_groups = user.get('Groups', [])
-                old_sub = next((attr['Value'] for attr in user.get('Attributes', []) if attr['Name'] == 'sub'), None)
+                old_sub = next(
+                    (attr['Value'] for attr in user.get('Attributes', [])
+                     if attr['Name'] == 'sub'), None
+                )
 
                 user_attributes = [
                     {'Name': attr['Name'], 'Value': attr['Value']}
@@ -156,8 +170,8 @@ class CognitoRestore:
                 )
 
                 new_sub = next(
-                    (attr['Value'] for attr in response['User']['Attributes'] if attr['Name'] == 'sub'),
-                    None
+                    (attr['Value'] for attr in response['User']['Attributes']
+                     if attr['Name'] == 'sub'), None
                 )
 
                 if old_sub and new_sub:
@@ -166,7 +180,10 @@ class CognitoRestore:
                         'old_sub': old_sub,
                         'new_sub': new_sub
                     })
-                    logger.info("Mapped old sub %s to new sub %s for user %s", old_sub, new_sub, username)
+                    logger.info(
+                        "Mapped old sub %s to new sub %s for user %s",
+                        old_sub, new_sub, username
+                    )
 
                 restored_users += 1
                 logger.info("Restored user: %s", username)
@@ -185,8 +202,8 @@ class CognitoRestore:
                             Username=username
                         )
                         new_sub = next(
-                            (attr['Value'] for attr in user_response['UserAttributes'] if attr['Name'] == 'sub'),
-                            None
+                            (attr['Value'] for attr in user_response['UserAttributes']
+                             if attr['Name'] == 'sub'), None
                         )
                         if old_sub and new_sub:
                             sub_mappings.append({
@@ -194,7 +211,10 @@ class CognitoRestore:
                                 'old_sub': old_sub,
                                 'new_sub': new_sub
                             })
-                            logger.info("Mapped old sub %s to new sub %s for existing user %s", old_sub, new_sub, username)
+                            logger.info(
+                                "Mapped old sub %s to new sub %s for existing user %s",
+                                old_sub, new_sub, username
+                            )
 
                         restored_memberships += self._restore_user_group_memberships(
                             user_pool_id, username, user_groups

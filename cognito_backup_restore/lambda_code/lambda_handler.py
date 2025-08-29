@@ -1,20 +1,21 @@
+"""Lambda handler module for Cognito backup and restore operations."""
+
 import json
 from typing import Dict, Any
 from botocore.exceptions import ClientError
-from config import Config, logger
-from aws_clients import AWSClients
-from backup import CognitoBackup
-from restore import CognitoRestore
-from dynamodb_update import DynamoDBUpdate
+from .config import Config, logger
+from .aws_clients import AWSClients
+from .backup import CognitoBackup
+from .restore import CognitoRestore
 
 def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
     """
     Main Lambda handler for Cognito backup and restore operations.
-    
+
     Args:
         event: Lambda event containing operation details
         _context: Lambda context (unused, prefixed with underscore)
-        
+
     Returns:
         Dict containing HTTP response with status and body
     """
@@ -22,8 +23,6 @@ def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
         config = Config()
         config.validate()
         aws_clients = AWSClients(config)
-        backup_restore = CognitoBackup(aws_clients)
-        restore = CognitoRestore(aws_clients)
         operation = event.get('operation')
 
         if operation == 'backup':
@@ -36,7 +35,8 @@ def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
                     })
                 }
 
-            result = backup_restore.backup_user_pool(user_pool_id)
+            backup_service = CognitoBackup(aws_clients)
+            result = backup_service.backup_user_pool(user_pool_id)
             return {
                 'statusCode': 200,
                 'body': json.dumps(result)
@@ -62,7 +62,8 @@ def lambda_handler(event: Dict[str, Any], _context) -> Dict[str, Any]:
                     })
                 }
 
-            result = restore.restore_user_pool(backup_key, target_user_pool_id)
+            restore_service = CognitoRestore(aws_clients)
+            result = restore_service.restore_user_pool(backup_key, target_user_pool_id)
             return {
                 'statusCode': 200,
                 'body': json.dumps(result)
