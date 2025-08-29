@@ -81,7 +81,7 @@ jobs:
       if: github.event_name == 'workflow_dispatch && github.ref == 'refs/heads/main'
       id: tfAppDest
       run: |
-        if [ "${{ github.event.inputs.actions || apply }} == 'apply" ]; then
+        if [ "${{ github.event.inputs.actions || 'apply' }} == 'apply' ]; then
             terraform apply tfplan --auto-approve
         else
             terraform destroy --auto-approve
