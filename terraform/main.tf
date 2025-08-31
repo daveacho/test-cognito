@@ -1,9 +1,9 @@
-module "ecr" {
-  source          = "./modules/ecr"
-  projectName     = var.projectName
-  environment     = var.environment
-  repository_name = var.repository_name
-}
+# module "ecr" {
+#   source          = "./modules/ecr"
+#   projectName     = var.projectName
+#   environment     = var.environment
+#   repository_name = var.repository_name
+# }
 module "lambdas" {
   source      = "./modules/lambdas"
   projectName = var.projectName
