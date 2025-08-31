@@ -1,9 +1,9 @@
 name: 'Push on Dev environment'
 
 on:
-  push:
-    branches:
-      - main
+  # push:
+  #   branches:
+  #     - main
   workflow_dispatch:
     inputs:
       actions:
@@ -80,7 +80,7 @@ jobs:
     #terraform apply or destroy
     - name: Terraform Apply or Destroy
     #  if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
-      if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+      if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
       id: tfAppDest
       run: |
         if [ "${{ github.event.inputs.actions || 'apply' }}" == 'apply' ]; then
