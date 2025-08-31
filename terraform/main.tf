@@ -1,9 +1,9 @@
-module "ecr" {
-  source          = "./modules/ecr"
-  projectName     = var.projectName
-  environment     = var.environment
-  repository_name = var.repository_name
-}
+# module "ecr" {
+#   source          = "./modules/ecr"
+#   projectName     = var.projectName
+#   environment     = var.environment
+#   repository_name = var.repository_name
+# }
 module "lambdas" {
   source      = "./modules/lambdas"
   projectName = var.projectName
@@ -16,13 +16,13 @@ module "lambdas" {
   lambda_image_uri = data.aws_ecr_image.lambda_image.image_uri
 }
 
-module "s3" {
-  source                    = "./modules/s3"
-  projectName               = var.projectName
-  environment               = var.environment
-  lambda_execution_role_arn = module.lambdas.lambda_execution_role_arn
-  lambda_function_name      = module.lambdas.cognito_backup_lambda_function_name
-}
+# module "s3" {
+#   source                    = "./modules/s3"
+#   projectName               = var.projectName
+#   environment               = var.environment
+#   lambda_execution_role_arn = module.lambdas.lambda_execution_role_arn
+#   lambda_function_name      = module.lambdas.cognito_backup_lambda_function_name
+# }
 
 
 # data "aws_ecr_repository" "test_name" {
