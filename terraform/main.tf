@@ -12,7 +12,7 @@ module "lambdas" {
   s3_bucket_name   = module.s3.s3_bucket_name
   s3_bucket_arn    = module.s3.s3_bucket_arn
   #lambda_image_uri = "{module.ecr.ecr_repository_url}:cognito_backup_restore-latest"
-  # lambda_image_uri = "${data.aws_ecr_repository.test_name.repository_url}:cognito_backup_restore-latest"
+  ## lambda_image_uri = "${data.aws_ecr_repository.test_name.repository_url}:cognito_backup_restore-latest"
   lambda_image_uri = data.aws_ecr_image.lambda_image.image_uri
 }
 
