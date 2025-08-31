@@ -9,7 +9,7 @@
 # # @pytest.fixture
 # # def aws_region():
 # #     """Fixture to set the AWS region for tests."""
-##   return 'eu-west-2'  # Default region, can be overridden via environment variable
+###   return 'eu-west-2'  # Default region, can be overridden via environment variable
 
 
 # # @pytest.fixture
