@@ -1,6 +1,6 @@
 ## ECR Repository
 resource "aws_ecr_repository" "lambda_repo" {
-#   name                 = "${var.projectName}-${var.environment}-cognito-backup-restore"
+##   name                 = "${var.projectName}-${var.environment}-cognito-backup-restore"
   name                 = var.repository_name
   image_tag_mutability = "MUTABLE"
   force_delete         = true

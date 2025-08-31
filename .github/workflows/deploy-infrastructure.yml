@@ -1,4 +1,4 @@
-name: 'Push on Dev environment'
+name: 'Infrastructure Deployment'
 
 on:
   push:
@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'terraform/**'
-      - 'main.tf'
   workflow_dispatch:
     inputs:
       actions:

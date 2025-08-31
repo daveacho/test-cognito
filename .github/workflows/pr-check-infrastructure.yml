@@ -1,4 +1,4 @@
-name: 'Pull Request on Dev environment'
+name: 'Terraform Pull Request Validation'
 
 on:
   pull_request:
@@ -7,7 +7,6 @@ on:
 
     paths:
       - 'terraform/**'
-      - 'main.tf'
 
 
 env:
@@ -16,10 +15,10 @@ env:
 
   
 permissions:
-      id-token: write
-      issues: write
-      pull-requests: write
-      contents: read
+  id-token: write
+  issues: write
+  pull-requests: write
+  contents: read
 
 jobs: 
   pr-infra-check:
