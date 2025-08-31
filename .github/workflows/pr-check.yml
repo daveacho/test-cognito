@@ -67,7 +67,7 @@ on:
       - main
     paths:
       - 'cognito_backup_restore/lambda_code/**'
-#      - 'cognito_backup_restore/requirements.txt'
+##      - 'cognito_backup_restore/requirements.txt'
 #      - 'cognito_backup_restore/Dockerfile'
       - 'cognito_backup_restore/tests/**'
 
