@@ -103,4 +103,4 @@ jobs:
     - name: Terraform Apply for Main branch
       if: github.ref == 'refs/heads/main'
       id: apply
-      run: terraform apply -auto-approve tfplan
+      run: terraform apply -auto-approve 
