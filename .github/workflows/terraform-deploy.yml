@@ -1,9 +1,12 @@
 name: 'Push on Dev environment'
 
 on:
-  # push:
-  #   branches:
-  #     - main
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'main.tf'
   workflow_dispatch:
     inputs:
       actions:
