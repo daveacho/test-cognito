@@ -1,19 +1,22 @@
 name: 'Push on Dev environment'
 
 on:
-  # push:
-  #   branches:
-  #     - main
-  workflow_dispatch:
-    inputs:
-      actions:
-        description: 'terraform action (apply or destroy)'
-        required: true
-        default: apply
-        type: choice
-        options:
-          - apply
-          - destroy
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'main.tf'
+  # workflow_dispatch:
+  #   inputs:
+  #     actions:
+  #       description: 'terraform action (apply or destroy)'
+  #       required: true
+  #       default: apply
+  #       type: choice
+  #       options:
+  #         - apply
+  #         - destroy
   workflow_run:
     workflows: ['Deploy Lambda Functions'] # Name of the deploy.yml workflow
     branches: [main]
