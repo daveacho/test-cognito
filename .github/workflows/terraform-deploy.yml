@@ -32,7 +32,7 @@ permissions:
 
 jobs:
   terraform:
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.workflow_run.conclusion == 'success')
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
     name: 'Terraform deploy'
     runs-on: ubuntu-latest
 
