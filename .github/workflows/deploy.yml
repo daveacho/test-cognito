@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'cognito_backup_restore/lambda_code/**'
+      - 'cognito_backup_restore/tests/**'
   workflow_dispatch:
 
 permissions:
